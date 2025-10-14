@@ -1,0 +1,76 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AiEnterprise.Gateway", "AiEnterprise.Gateway", "{9B1A1CA6-F570-45CA-9203-262E79658B81}"
+	ProjectSection(SolutionItems) = preProject
+		AiEnterprise.Gateway.csproj = AiEnterprise.Gateway.csproj
+		appsettings.Development.json = appsettings.Development.json
+		appsettings.json = appsettings.json
+		Program.cs = Program.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Controllers", "Controllers", "{5B2AD55F-BDD5-4709-965F-25839EA5FA9C}"
+	ProjectSection(SolutionItems) = preProject
+		GatewayController.cs = GatewayController.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Middleware", "Middleware", "{4E9466E4-7260-432C-B2D3-3647F15FEB52}"
+	ProjectSection(SolutionItems) = preProject
+		AuthMiddleware.cs = AuthMiddleware.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AiEnterprise.Web", "AiEnterprise.Web", "{0301AEAD-568D-4E66-B4BB-5CC5C5FE7786}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Pages", "Pages", "{745297EA-3061-4D1E-BA30-EC95F33FE7AE}"
+	ProjectSection(SolutionItems) = preProject
+		ViewStart.cshtml = ViewStart.cshtml
+		_ViewImports.cshtml = _ViewImports.cshtml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{5E244C18-793A-4F1F-98C5-4066756BDDF0}"
+	ProjectSection(SolutionItems) = preProject
+		_Layout.cshtml = _Layout.cshtml
+		_ValidationScriptsPartial.cshtml = _ValidationScriptsPartial.cshtml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dashboard", "Dashboard", "{8ED155FC-112E-41AA-944A-B1A88B6F1462}"
+	ProjectSection(SolutionItems) = preProject
+		Index.cshtml = Index.cshtml
+		Index.cshtml.cs = Index.cshtml.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AiAssistant", "AiAssistant", "{6F3B23F6-0659-451A-9959-B23E795C3B13}"
+	ProjectSection(SolutionItems) = preProject
+		Index.cshtml = Index.cshtml
+		Index.cshtml.cs = Index.cshtml.cs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Analytics", "Analytics", "{C989BF83-E107-4E1C-84D7-80F4CE989DC3}"
+	ProjectSection(SolutionItems) = preProject
+		Index.cshtml = Index.cshtml
+		Index.cshtml.cs = Index.cshtml.cs
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9B1A1CA6-F570-45CA-9203-262E79658B81} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{5B2AD55F-BDD5-4709-965F-25839EA5FA9C} = {9B1A1CA6-F570-45CA-9203-262E79658B81}
+		{4E9466E4-7260-432C-B2D3-3647F15FEB52} = {9B1A1CA6-F570-45CA-9203-262E79658B81}
+		{0301AEAD-568D-4E66-B4BB-5CC5C5FE7786} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{745297EA-3061-4D1E-BA30-EC95F33FE7AE} = {0301AEAD-568D-4E66-B4BB-5CC5C5FE7786}
+		{5E244C18-793A-4F1F-98C5-4066756BDDF0} = {745297EA-3061-4D1E-BA30-EC95F33FE7AE}
+		{8ED155FC-112E-41AA-944A-B1A88B6F1462} = {745297EA-3061-4D1E-BA30-EC95F33FE7AE}
+		{6F3B23F6-0659-451A-9959-B23E795C3B13} = {745297EA-3061-4D1E-BA30-EC95F33FE7AE}
+		{C989BF83-E107-4E1C-84D7-80F4CE989DC3} = {745297EA-3061-4D1E-BA30-EC95F33FE7AE}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D67BB328-046C-4B2B-8C3C-6B995EFBDF39}
+	EndGlobalSection
+EndGlobal
