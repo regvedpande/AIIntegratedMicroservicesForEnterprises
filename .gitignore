@@ -3,13 +3,25 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# =============================================
+# SECURITY: Never commit secrets to source control
+# Use environment variables, Azure Key Vault, or dotnet user-secrets
+# =============================================
+appsettings.json
+appsettings.*.json
+!appsettings.template.json
+secrets.json
+*.secrets.json
+.env
+.env.*
+!.env.template
+
 # User-specific files
 *.rsuser
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
-*.env
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
