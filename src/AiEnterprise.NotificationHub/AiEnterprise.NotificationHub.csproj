@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AiEnterprise.NotificationHub</RootNamespace>
+    <UserSecretsId>dotnet-AiEnterprise.NotificationHub-55555555-0000-0000-0000-555555555555</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+    <PackageReference Include="Dapper" Version="2.1.28" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AiEnterprise.Core\AiEnterprise.Core.csproj" />
+    <ProjectReference Include="..\AiEnterprise.Infrastructure\AiEnterprise.Infrastructure.csproj" />
+    <ProjectReference Include="..\AiEnterprise.Shared\AiEnterprise.Shared.csproj" />
+  </ItemGroup>
+
+</Project>
