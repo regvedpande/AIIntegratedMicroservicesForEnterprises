@@ -1,4 +1,5 @@
 using AiEnterprise.Core.Interfaces.Services;
+using AiEnterprise.Infrastructure.Database;
 using AiEnterprise.Infrastructure.Extensions;
 using AiEnterprise.RiskScoring.Services;
 using AiEnterprise.Shared.Middleware;
@@ -21,7 +22,10 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Jwt:Key is not configured.");
+    ?? throw new InvalidOperationException(
+        "Jwt:Key is not configured.\n" +
+        "Development: run 'dotnet user-secrets set \"Jwt:Key\" \"<min-32-char-secret>\"' in this project directory.\n" +
+        "Production: set the Jwt__Key environment variable.");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -31,9 +35,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
             ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "AiEnterpriseGateway",
             ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "AiEnterprise",
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30)
         };
@@ -44,6 +48,13 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddScoped<IRiskScoringService, VendorRiskScoringEngine>();
 
 var app = builder.Build();
+
+// Initialize database schema on startup
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+    await initializer.InitializeAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {

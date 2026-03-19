@@ -7,14 +7,24 @@
 # SECURITY: Never commit secrets to source control
 # Use environment variables, Azure Key Vault, or dotnet user-secrets
 # =============================================
-appsettings.json
-appsettings.*.json
-!appsettings.template.json
+
+# Root-level appsettings.json had hardcoded secrets - permanently exclude
+/appsettings.json
+/appsettings.Development.json
+!/appsettings.template.json
+
+# Secrets files (never commit these)
 secrets.json
 *.secrets.json
+**/secrets.json
+
+# Environment variable files
 .env
 .env.*
 !.env.template
+
+# dotnet user-secrets (stored outside repo by design, but just in case)
+**/usersecrets.json
 
 # User-specific files
 *.rsuser

@@ -7,8 +7,4 @@
     <RootNamespace>AiEnterprise.Core</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Anthropic.SDK" Version="3.7.2" />
-  </ItemGroup>
-
 </Project>

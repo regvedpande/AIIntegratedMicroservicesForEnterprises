@@ -241,6 +241,7 @@ public class DatabaseInitializer
             ExecutiveSummary NVARCHAR(MAX) NOT NULL DEFAULT '',
             DetailedFindings NVARCHAR(MAX) NOT NULL DEFAULT '{}',
             Recommendations NVARCHAR(MAX) NOT NULL DEFAULT '',
+            ReportFormat NVARCHAR(20) NOT NULL DEFAULT 'JSON',
             GeneratedByUserId UNIQUEIDENTIFIER NOT NULL,
             GeneratedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
             FOREIGN KEY (EnterpriseId) REFERENCES Enterprises(Id)
