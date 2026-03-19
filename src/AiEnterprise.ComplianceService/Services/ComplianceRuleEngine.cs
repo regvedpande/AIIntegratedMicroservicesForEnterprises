@@ -46,8 +46,8 @@ public class ComplianceRuleEngine : IComplianceService
                 var savedViolation = await CreateViolationAsync(new CreateViolationRequest(
                     request.EnterpriseId,
                     rule.Id,
-                    violation.Title,
-                    violation.Description,
+                    violation.Value.Title,
+                    violation.Value.Description,
                     request.ResourceId,
                     JsonSerializer.Serialize(new { Rule = rule.RuleCode, Resource = request.ResourceData }),
                     rule.DefaultSeverity
@@ -56,7 +56,7 @@ public class ComplianceRuleEngine : IComplianceService
                 violations.Add(new ViolationSummaryDto(
                     savedViolation.Id,
                     rule.RuleCode,
-                    violation.Title,
+                    violation.Value.Title,
                     rule.DefaultSeverity,
                     ViolationStatus.Open,
                     request.ResourceId,

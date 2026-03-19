@@ -103,7 +103,7 @@ public class VendorRiskScoringEngine : IRiskScoringService
         var rows = await connection.QueryAsync(sql, new { EnterpriseId = enterpriseId });
         var result = rows.Select(r =>
         {
-            var dataTypes = JsonSerializer.Deserialize<List<string>>(r.DataTypesShared) ?? new();
+            var dataTypes = JsonSerializer.Deserialize<List<string>>((string)r.DataTypesShared) ?? new List<string>();
             return new VendorRiskSummary(
                 r.Id, r.VendorName, (RiskLevel)r.CurrentRiskLevel,
                 r.CompositeRiskScore, r.ServiceCategory, r.LastAssessmentDate,

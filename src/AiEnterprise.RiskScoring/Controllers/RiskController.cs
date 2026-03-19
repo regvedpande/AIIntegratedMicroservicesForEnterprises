@@ -1,5 +1,6 @@
 using AiEnterprise.Core.DTOs;
 using AiEnterprise.Core.Interfaces.Services;
+using AiEnterprise.Core.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

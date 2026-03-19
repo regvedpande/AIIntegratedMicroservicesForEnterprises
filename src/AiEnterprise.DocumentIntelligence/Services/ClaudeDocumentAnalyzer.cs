@@ -46,7 +46,7 @@ public class ClaudeDocumentAnalyzer
         {
             Model = ModelId,
             MaxTokens = 4096,
-            System = [new SystemMessage(systemPrompt)],
+            SystemMessage = systemPrompt,
             Messages =
             [
                 new Message(RoleType.User, userPrompt)
@@ -114,30 +114,31 @@ public class ClaudeDocumentAnalyzer
 
     private static string BuildUserPrompt(string content, DocumentType type, string fileName)
     {
-        return $"""
-            Analyze this {type} document: "{fileName}"
+        var truncated = content[..Math.Min(content.Length, 30000)];
+        return $$"""
+            Analyze this {{type}} document: "{{fileName}}"
 
             DOCUMENT CONTENT:
-            {content[..Math.Min(content.Length, 30000)]}
+            {{truncated}}
 
             Provide your analysis in this EXACT JSON format (no markdown, pure JSON):
-            {{
+            {
               "overallRiskLevel": "Low|Medium|High|Critical",
               "riskScore": <number 0-100>,
               "executiveSummary": "<2-3 sentence summary for executives>",
               "findings": [
-                {{
+                {
                   "category": "<category name>",
                   "riskLevel": "Low|Medium|High|Critical",
                   "description": "<detailed description>",
                   "clauseReference": "<section/clause reference or 'Not specified'>",
                   "recommendation": "<specific remediation action>"
-                }}
+                }
               ],
               "keyClauses": ["<important clause summary 1>", "<important clause summary 2>"],
               "complianceConcerns": ["<concern 1>", "<concern 2>"],
               "recommendations": ["<priority recommendation 1>", "<priority recommendation 2>"]
-            }}
+            }
 
             Rules:
             - riskScore: 0=no risk, 100=extreme risk
@@ -154,7 +155,7 @@ public class ClaudeDocumentAnalyzer
             // Strip any accidental markdown code blocks
             var json = rawContent.Trim();
             if (json.StartsWith("```")) json = json[json.IndexOf('{')..];
-            if (json.EndsWith("```")) json = json[..json.LastIndexOf('}') + 1];
+            if (json.EndsWith("```")) json = json[..(json.LastIndexOf('}') + 1)];
 
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
