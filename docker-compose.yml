@@ -25,10 +25,12 @@ services:
     volumes:
       - sqlserver_data:/var/opt/mssql
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P '${SQL_SA_PASSWORD}' -Q 'SELECT 1'"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      # SQL Server 2022 moved sqlcmd to mssql-tools18; fall back to legacy path for older images
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P '${SQL_SA_PASSWORD}' -Q 'SELECT 1' 2>/dev/null || /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P '${SQL_SA_PASSWORD}' -Q 'SELECT 1'"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
     networks:
       - aiep-network
 
