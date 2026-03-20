@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, "claude/**", "feature/**", "fix/**" ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore dependencies
+        run: dotnet restore AiEnterpriseSolution.sln
+
+      - name: Build (Release, zero warnings)
+        run: dotnet build AiEnterpriseSolution.sln --configuration Release --no-restore -warnaserror
+
+      - name: Publish all services
+        run: |
+          for svc in Gateway ComplianceService DocumentIntelligence RiskScoring AuditService NotificationHub; do
+            echo "Publishing AiEnterprise.$svc..."
+            dotnet publish src/AiEnterprise.$svc/AiEnterprise.$svc.csproj \
+              --configuration Release \
+              --no-build \
+              --output /tmp/publish/$svc \
+              -p:UseAppHost=false
+          done
+
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    # Only run on PRs and main to save CI minutes
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+
+    strategy:
+      matrix:
+        service:
+          - { name: gateway,              dockerfile: src/AiEnterprise.Gateway/Dockerfile }
+          - { name: compliance-service,   dockerfile: src/AiEnterprise.ComplianceService/Dockerfile }
+          - { name: document-intelligence,dockerfile: src/AiEnterprise.DocumentIntelligence/Dockerfile }
+          - { name: risk-scoring,         dockerfile: src/AiEnterprise.RiskScoring/Dockerfile }
+          - { name: audit-service,        dockerfile: src/AiEnterprise.AuditService/Dockerfile }
+          - { name: notification-hub,     dockerfile: src/AiEnterprise.NotificationHub/Dockerfile }
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image — ${{ matrix.service.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service.dockerfile }}
+          push: false
+          tags: aiep/${{ matrix.service.name }}:ci
+          cache-from: type=gha,scope=${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
+
+  security-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
