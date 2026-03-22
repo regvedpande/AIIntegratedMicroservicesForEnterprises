@@ -153,7 +153,6 @@ if (app.Environment.IsDevelopment())
 
 // Security middleware pipeline (order matters!)
 app.UseMiddleware<SecurityHeadersMiddleware>();  // Security headers on all responses
-app.UseHttpsRedirection();
 app.UseCors("EnterprisePolicy");
 app.UseRateLimiter();
 app.UseAuthentication();

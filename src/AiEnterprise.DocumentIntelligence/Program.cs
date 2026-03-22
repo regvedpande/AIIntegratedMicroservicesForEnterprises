@@ -45,9 +45,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddHttpClient("gemini").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(90));
 
 // Document Intelligence services
-builder.Services.AddSingleton<ClaudeDocumentAnalyzer>();
+builder.Services.AddSingleton<GeminiDocumentAnalyzer>();
 builder.Services.AddScoped<IDocumentAnalysisService, DocumentAnalysisService>();
 
 var app = builder.Build();
@@ -65,8 +66,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseExceptionHandler(exceptionHandlerApp =>
+{
+    exceptionHandlerApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        var ex = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>()?.Error;
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Unhandled exception in DocumentIntelligence");
+        await context.Response.WriteAsync(
+            System.Text.Json.JsonSerializer.Serialize(new { error = ex?.Message ?? "Internal server error." }));
+    });
+});
 app.UseMiddleware<SecurityHeadersMiddleware>();
-app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

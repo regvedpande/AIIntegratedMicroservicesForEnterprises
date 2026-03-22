@@ -41,12 +41,12 @@ public class RiskController : ControllerBase
     /// Get all vendor risk profiles for an enterprise, ordered by risk score (highest first).
     /// </summary>
     [HttpGet("{enterpriseId}/vendors")]
-    public async Task<ActionResult<IReadOnlyList<VendorRiskSummary>>> GetVendorProfiles(
+    public async Task<ActionResult<PagedResult<VendorRiskSummary>>> GetVendorProfiles(
         Guid enterpriseId,
         CancellationToken ct)
     {
         var profiles = await _riskService.GetVendorRiskProfilesAsync(enterpriseId, ct);
-        return Ok(profiles);
+        return Ok(new PagedResult<VendorRiskSummary>(profiles, profiles.Count, 1, profiles.Count == 0 ? 1 : profiles.Count, 1));
     }
 
     /// <summary>
@@ -76,7 +76,7 @@ public class RiskController : ControllerBase
     /// Get recent behavioral anomalies for an enterprise, ordered by anomaly score (most severe first).
     /// </summary>
     [HttpGet("{enterpriseId}/behavioral/recent")]
-    public async Task<ActionResult<IReadOnlyList<BehavioralRiskEvent>>> GetRecentAnomalies(
+    public async Task<ActionResult<PagedResult<BehavioralRiskEvent>>> GetRecentAnomalies(
         Guid enterpriseId,
         [FromQuery] int limit = 50,
         CancellationToken ct = default)
@@ -85,7 +85,7 @@ public class RiskController : ControllerBase
             return BadRequest(new { error = "Limit must be between 1 and 500." });
 
         var events = await _riskService.GetRecentAnomaliesAsync(enterpriseId, limit, ct);
-        return Ok(events);
+        return Ok(new PagedResult<BehavioralRiskEvent>(events, events.Count, 1, events.Count == 0 ? 1 : events.Count, 1));
     }
 
     [HttpGet("health")]

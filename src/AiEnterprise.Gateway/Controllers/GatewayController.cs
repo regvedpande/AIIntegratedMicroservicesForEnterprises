@@ -187,13 +187,24 @@ public class GatewayController : ControllerBase
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Downstream {ClientName} returned {StatusCode} for {Path}",
-                    clientName, response.StatusCode, path);
+                var preview = responseBody.Length > 500 ? responseBody[..500] : responseBody;
+                _logger.LogWarning("Downstream {ClientName} returned {StatusCode} for {Path}. Body: {Body}",
+                    clientName, (int)response.StatusCode, path, preview);
             }
 
-            return StatusCode((int)response.StatusCode, responseBody.Length > 0
-                ? (object)JsonSerializer.Deserialize<object>(responseBody, JsonOptions)!
-                : new { });
+            object responsePayload;
+            try
+            {
+                responsePayload = responseBody.Length > 0
+                    ? JsonSerializer.Deserialize<object>(responseBody, JsonOptions)!
+                    : new { };
+            }
+            catch
+            {
+                responsePayload = new { error = responseBody };
+            }
+
+            return StatusCode((int)response.StatusCode, responsePayload);
         }
         catch (HttpRequestException ex)
         {
