@@ -1,5 +1,6 @@
 using AiEnterprise.Infrastructure.Configuration;
 using Dapper;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace AiEnterprise.Infrastructure.Database;
@@ -20,18 +21,83 @@ public class DatabaseInitializer
 
     public async Task InitializeAsync()
     {
+        await EnsureDatabaseExistsAsync();
+
         using var connection = _context.CreateConnection();
         try
         {
             await connection.ExecuteAsync(CreateTablesScript);
-            _logger.LogInformation("Database schema initialized successfully.");
+        }
+        catch (SqlException ex) when (ex.Number == 2714)
+        {
+            // 2714 = object already exists — concurrent service startup, safe to ignore
+            _logger.LogDebug("Tables already exist (concurrent startup). Continuing.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize database schema.");
             throw;
         }
+
+        try
+        {
+            await connection.ExecuteAsync(SeedDemoDataScript);
+            _logger.LogInformation("Database schema initialized successfully.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to seed demo data (may already exist).");
+        }
     }
+
+    private async Task EnsureDatabaseExistsAsync()
+    {
+        var dbName = _context.DatabaseName;
+        try
+        {
+            using var master = _context.CreateMasterConnection();
+            await master.ExecuteAsync($"IF DB_ID(N'{dbName}') IS NULL CREATE DATABASE [{dbName}]");
+            _logger.LogInformation("Database '{DbName}' is ready.", dbName);
+        }
+        catch (SqlException ex) when (ex.Number == 1801 || ex.Number == 5170)
+        {
+            _logger.LogDebug("Database '{DbName}' already exists (concurrent creation ignored).", dbName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not auto-create database '{DbName}' — it may already exist or LocalDB may need to be started.", dbName);
+        }
+    }
+
+    private const string SeedDemoDataScript = """
+        IF NOT EXISTS (SELECT 1 FROM Enterprises WHERE Id = '00000000-0000-0000-0000-000000000001')
+        INSERT INTO Enterprises (Id, Name, Domain, SubscriptionTier, ActiveFrameworks, ContactEmail, Industry, EmployeeCount, Country, IsActive)
+        VALUES (
+            '00000000-0000-0000-0000-000000000001',
+            'Demo Enterprise',
+            'demo.enterprise.local',
+            3,
+            '["GDPR","SOX","HIPAA","PCIDSS"]',
+            'admin@enterprise.local',
+            'Technology',
+            500,
+            'US',
+            1
+        );
+
+        IF NOT EXISTS (SELECT 1 FROM Users WHERE Id = '00000000-0000-0000-0000-000000000001')
+        INSERT INTO Users (Id, EnterpriseId, Email, PasswordHash, Role, FirstName, LastName, IsActive)
+        VALUES (
+            '00000000-0000-0000-0000-000000000001',
+            '00000000-0000-0000-0000-000000000001',
+            'admin@enterprise.local',
+            'demo-local-dev-only',
+            'Admin',
+            'Demo',
+            'Admin',
+            1
+        );
+        """;
 
     private const string CreateTablesScript = """
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Enterprises' AND xtype='U')
