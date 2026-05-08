@@ -5,7 +5,9 @@ using AiEnterprise.Infrastructure.Configuration;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Net;
 using System.Net.Http.Json;
+using System.Net.Mail;
 using System.Text;
 using System.Text.Json;
 
@@ -172,22 +174,58 @@ public class AlertNotificationService : INotificationService
 
     private async Task SendEmailNotificationAsync(Alert alert, CancellationToken ct)
     {
-        // In production, integrate with SendGrid, Mailgun, or Amazon SES.
-        // Here we log the email that would be sent, keeping the service dependency-free.
         var emailRecipients = _configuration["Notifications:AlertEmailRecipients"];
         if (string.IsNullOrWhiteSpace(emailRecipients))
         {
-            _logger.LogDebug("Email notification skipped - no recipients configured.");
+            _logger.LogDebug("Email notification skipped — no recipients configured.");
             return;
         }
 
-        var emailBody = BuildEmailBody(alert);
-        _logger.LogInformation(
-            "EMAIL ALERT [{Severity}]: To={Recipients}, Subject={Title}, Body={BodyPreview}",
-            alert.Severity, emailRecipients, alert.Title, emailBody[..Math.Min(200, emailBody.Length)]);
+        var smtpHost = _configuration["Notifications:Smtp:Host"];
+        if (string.IsNullOrWhiteSpace(smtpHost))
+        {
+            _logger.LogWarning("Email notification skipped — Notifications:Smtp:Host is not configured.");
+            return;
+        }
 
-        // TODO: Integrate actual SMTP/API email sending here
-        await Task.CompletedTask;
+        var port = int.TryParse(_configuration["Notifications:Smtp:Port"], out var p) ? p : 587;
+        var fromAddress = _configuration["Notifications:Smtp:FromAddress"] ?? "noreply@aienterpriseecri.com";
+        var fromName = _configuration["Notifications:Smtp:FromName"] ?? "AiEnterprise ECRI";
+        var smtpUser = _configuration["Notifications:Smtp:Username"];
+        var smtpPass = _configuration["Notifications:Smtp:Password"];
+        var enableSsl = !string.Equals(_configuration["Notifications:Smtp:EnableSsl"], "false", StringComparison.OrdinalIgnoreCase);
+
+        try
+        {
+            using var smtp = new SmtpClient(smtpHost, port)
+            {
+                EnableSsl = enableSsl,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                UseDefaultCredentials = false
+            };
+
+            if (!string.IsNullOrWhiteSpace(smtpUser) && !string.IsNullOrWhiteSpace(smtpPass))
+                smtp.Credentials = new NetworkCredential(smtpUser, smtpPass);
+
+            using var message = new MailMessage
+            {
+                From = new MailAddress(fromAddress, fromName),
+                Subject = $"[{alert.Severity.ToString().ToUpperInvariant()}] {alert.Title}",
+                Body = BuildEmailBody(alert),
+                IsBodyHtml = false
+            };
+
+            foreach (var recipient in emailRecipients.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                message.To.Add(recipient);
+
+            await smtp.SendMailAsync(message, ct);
+
+            _logger.LogInformation("Email alert sent for {AlertId} to {Recipients}", alert.Id, emailRecipients);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send email alert for {AlertId}", alert.Id);
+        }
     }
 
     private static string BuildEmailBody(Alert alert)
