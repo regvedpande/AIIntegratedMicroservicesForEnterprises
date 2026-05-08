@@ -15,18 +15,18 @@ namespace AiEnterprise.DocumentIntelligence.Services;
 public class DocumentAnalysisService : IDocumentAnalysisService
 {
     private readonly DapperContext _db;
-    private readonly GeminiDocumentAnalyzer _geminiAnalyzer;
+    private readonly ClaudeDocumentAnalyzer _claudeAnalyzer;
     private readonly ICacheService _cache;
     private readonly ILogger<DocumentAnalysisService> _logger;
 
     public DocumentAnalysisService(
         DapperContext db,
-        GeminiDocumentAnalyzer geminiAnalyzer,
+        ClaudeDocumentAnalyzer claudeAnalyzer,
         ICacheService cache,
         ILogger<DocumentAnalysisService> logger)
     {
         _db = db;
-        _geminiAnalyzer = geminiAnalyzer;
+        _claudeAnalyzer = claudeAnalyzer;
         _cache = cache;
         _logger = logger;
     }
@@ -57,8 +57,7 @@ public class DocumentAnalysisService : IDocumentAnalysisService
 
         await SaveDocumentAsync(document);
 
-        // Run Claude AI analysis
-        var analysisResult = await _geminiAnalyzer.AnalyzeDocumentAsync(
+        var analysisResult = await _claudeAnalyzer.AnalyzeDocumentAsync(
             document.Id, textContent, request.DocumentType, sanitizedFileName, ct);
 
         await SaveAnalysisResultAsync(analysisResult);

@@ -45,10 +45,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddInfrastructureServices(builder.Configuration);
-builder.Services.AddHttpClient("gemini").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(90));
 
 // Document Intelligence services
-builder.Services.AddSingleton<GeminiDocumentAnalyzer>();
+builder.Services.AddSingleton<ClaudeDocumentAnalyzer>();
 builder.Services.AddScoped<IDocumentAnalysisService, DocumentAnalysisService>();
 
 var app = builder.Build();
