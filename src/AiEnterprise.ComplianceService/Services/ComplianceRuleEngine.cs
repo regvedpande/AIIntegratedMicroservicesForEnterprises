@@ -126,15 +126,17 @@ public class ComplianceRuleEngine : IComplianceService
 
     public async Task<PagedResult<ViolationSummaryDto>> GetViolationsAsync(
         Guid enterpriseId,
+        ComplianceFramework? framework,
         ViolationStatus? status,
         int page,
         int pageSize,
         CancellationToken ct = default)
     {
         using var connection = _db.CreateConnection();
-        var whereClause = status.HasValue
-            ? "WHERE EnterpriseId = @EnterpriseId AND Status = @Status"
-            : "WHERE EnterpriseId = @EnterpriseId";
+        var filters = new List<string> { "EnterpriseId = @EnterpriseId" };
+        if (framework.HasValue) filters.Add("Framework = @Framework");
+        if (status.HasValue) filters.Add("Status = @Status");
+        var whereClause = $"WHERE {string.Join(" AND ", filters)}";
 
         var countSql = $"SELECT COUNT(*) FROM ComplianceViolations {whereClause}";
         var dataSql = $"""
@@ -144,7 +146,14 @@ public class ComplianceRuleEngine : IComplianceService
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY
             """;
 
-        var parameters = new { EnterpriseId = enterpriseId, Status = (int?)status, Offset = (page - 1) * pageSize, PageSize = pageSize };
+        var parameters = new
+        {
+            EnterpriseId = enterpriseId,
+            Framework = (int?)framework,
+            Status = (int?)status,
+            Offset = (page - 1) * pageSize,
+            PageSize = pageSize
+        };
         var total = await connection.ExecuteScalarAsync<int>(countSql, parameters);
         var rows = await connection.QueryAsync(dataSql, parameters);
 

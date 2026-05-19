@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { useAuthStore } from '../store/auth'
 
-const API_KEY = import.meta.env.VITE_GATEWAY_API_KEY ?? 'REPLACE_WITH_YOUR_GATEWAY_API_KEY'
+const API_KEY = import.meta.env.VITE_GATEWAY_API_KEY || 'dev-gateway-api-key-local-testing-only'
 
 export const apiClient = axios.create({
   baseURL: '/api/gateway',
@@ -9,14 +9,22 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
     'X-Api-Key': API_KEY,
   },
-  timeout: 30000,
+  timeout: 300000, // 5 minutes — NVIDIA AI analysis can take 60-120 seconds
 })
 
-// Request interceptor: attach Bearer token
+// Request interceptor: attach Bearer token, auto-logout if expired
 apiClient.interceptors.request.use(
   (config) => {
     const user = useAuthStore.getState().user
     if (user?.token) {
+      // Check token expiry before sending
+      try {
+        const payload = JSON.parse(atob(user.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+          useAuthStore.getState().logout()
+          return Promise.reject(new axios.Cancel('Session expired. Please log in again.'))
+        }
+      } catch { /* malformed token — let server reject it */ }
       config.headers.Authorization = `Bearer ${user.token}`
     }
     return config
@@ -24,15 +32,10 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Response interceptor: handle 401 → logout
+// Response interceptor: propagate errors to callers
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      useAuthStore.getState().logout()
-    }
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
 export function getErrorMessage(error: unknown): string {

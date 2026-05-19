@@ -18,6 +18,23 @@ import type {
   ResolveViolationRequest,
 } from '../types'
 
+type RawDocumentAnalysisResponse = {
+  documentId: string
+  overallRiskLevel: number
+  riskScore: number
+  executiveSummary: string
+  analyzedAt?: string
+  findings?: Array<{
+    category: string
+    description: string
+    riskLevel: number
+    clauseReference?: string
+    recommendation?: string
+  }>
+  complianceConcerns?: string[]
+  recommendations?: string[]
+}
+
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 export const healthApi = {
@@ -29,7 +46,9 @@ export const healthApi = {
 
 export const complianceApi = {
   runCheck: (req: ComplianceCheckRequest) =>
-    apiClient.post('/compliance/check', req).then((r) => r.data),
+    apiClient
+      .post('/compliance/check', buildComplianceCheckPayload(req))
+      .then((r) => r.data),
 
   getFrameworks: (enterpriseId: string) =>
     apiClient
@@ -48,7 +67,11 @@ export const complianceApi = {
 
   resolveViolation: (violationId: string, req: ResolveViolationRequest) =>
     apiClient
-      .patch(`/compliance/violations/${violationId}/resolve`, req)
+      .patch(`/compliance/violations/${violationId}/resolve`, {
+        violationId,
+        resolvedByUserId: req.resolvedByUserId,
+        resolutionNotes: req.resolutionNotes,
+      })
       .then((r) => r.data),
 }
 
@@ -76,8 +99,8 @@ export const documentsApi = {
 
   getAnalysis: (documentId: string) =>
     apiClient
-      .get<DocumentAnalysisDetail>(`/documents/${documentId}/analysis`)
-      .then((r) => r.data),
+      .get<RawDocumentAnalysisResponse>(`/documents/${documentId}/analysis`)
+      .then((r) => normalizeDocumentAnalysis(r.data)),
 
   list: (enterpriseId: string, params?: { page?: number; pageSize?: number }) =>
     apiClient
@@ -89,7 +112,20 @@ export const documentsApi = {
 
 export const vendorsApi = {
   assess: (req: VendorAssessmentRequest) =>
-    apiClient.post<VendorRiskSummary>('/risk/vendors/assess', req).then((r) => r.data),
+    apiClient
+      .post<VendorRiskSummary>('/risk/vendors/assess', {
+        enterpriseId: req.enterpriseId,
+        vendorName: req.vendorName,
+        vendorDomain: toVendorDomain(req.vendorWebsite),
+        serviceCategory: req.serviceCategory,
+        country: 'United States',
+        dataTypesShared: mapDataAccessLevel(req.dataAccessLevel),
+        hasSignedDPA: false,
+        hasSOC2: req.certifications?.includes('SOC 2 Type II') ?? false,
+        hasISO27001: req.certifications?.includes('ISO 27001') ?? false,
+        additionalContext: req.additionalContext ?? '',
+      })
+      .then((r) => r.data),
 
   list: (enterpriseId: string) =>
     apiClient
@@ -131,6 +167,116 @@ export const alertsApi = {
       .get<Alert[]>(`/notifications/${enterpriseId}/active`)
       .then((r) => r.data),
 
-  acknowledge: (alertId: string) =>
-    apiClient.patch(`/notifications/${alertId}/acknowledge`).then((r) => r.data),
+  acknowledge: (alertId: string, userId: string) =>
+    apiClient.patch(`/notifications/${alertId}/acknowledge`, { userId }).then((r) => r.data),
+}
+
+function buildComplianceCheckPayload(req: ComplianceCheckRequest) {
+  const scope = req.scope?.trim()
+  return {
+    enterpriseId: req.enterpriseId,
+    framework: req.framework,
+    resourceType: scope || 'EnterpriseScope',
+    resourceId: scope || req.enterpriseId,
+    resourceData: JSON.stringify(defaultComplianceResourceData(req.framework, scope)),
+  }
+}
+
+function defaultComplianceResourceData(framework: number, scope?: string) {
+  const shared = {
+    scope: scope || 'all-resources',
+    encryptionEnabled: false,
+    supportsDataDeletion: false,
+    breachDetected: false,
+    notifiedDPA: false,
+    financialReportApproved: false,
+    internalControlsTested: false,
+    roleBasedAccessEnabled: false,
+    tlsEnabled: false,
+    cardDataEncrypted: false,
+    mfaEnabled: false,
+  }
+
+  switch (framework) {
+    case 1:
+      return { ...shared, collectsUnnecessaryData: true }
+    case 2:
+      return { ...shared, financialReportApproved: false, internalControlsTested: false }
+    case 3:
+      return { ...shared, roleBasedAccessEnabled: false, tlsEnabled: false }
+    case 4:
+      return { ...shared, cardDataEncrypted: false, mfaEnabled: false }
+    default:
+      return shared
+  }
+}
+
+function normalizeDocumentAnalysis(data: RawDocumentAnalysisResponse): DocumentAnalysisDetail {
+  const findings = (data.findings ?? []).map((finding, index) => ({
+    id: `${data.documentId}-finding-${index}`,
+    category: finding.category,
+    description: finding.description,
+    severity: finding.riskLevel,
+    clause: finding.clauseReference,
+  }))
+
+  const complianceConcerns = (data.complianceConcerns ?? []).map((description, index) => ({
+    id: `${data.documentId}-concern-${index}`,
+    framework: extractFramework(description),
+    description,
+    articleReference: extractArticleReference(description),
+  }))
+
+  return {
+    documentId: data.documentId,
+    fileName: '',
+    type: 99,
+    overallRiskLevel: data.overallRiskLevel,
+    riskScore: data.riskScore,
+    executiveSummary: data.executiveSummary,
+    findingsCount: findings.length,
+    complianceConcernsCount: complianceConcerns.length,
+    analyzedAt: data.analyzedAt ?? new Date().toISOString(),
+    findings,
+    complianceConcerns,
+    recommendations: data.recommendations ?? [],
+  }
+}
+
+function extractFramework(description: string): string {
+  const upper = description.toUpperCase()
+  if (upper.includes('GDPR')) return 'GDPR'
+  if (upper.includes('HIPAA')) return 'HIPAA'
+  if (upper.includes('SOX')) return 'SOX'
+  if (upper.includes('PCI')) return 'PCI DSS'
+  return 'General'
+}
+
+function extractArticleReference(description: string): string | undefined {
+  const match = description.match(/(?:article|art\.|section|sec\.)\s*([A-Za-z0-9.-]+)/i)
+  return match?.[1]
+}
+
+function toVendorDomain(vendorWebsite?: string): string {
+  if (!vendorWebsite) return ''
+  try {
+    return new URL(vendorWebsite).hostname
+  } catch {
+    return vendorWebsite.replace(/^https?:\/\//i, '').split('/')[0]
+  }
+}
+
+function mapDataAccessLevel(level: string): string[] {
+  switch (level) {
+    case 'Public Data':
+      return ['Public']
+    case 'Internal Data':
+      return ['Internal']
+    case 'Confidential Data':
+      return ['Confidential']
+    case 'Restricted / PII':
+      return ['PII']
+    default:
+      return []
+  }
 }

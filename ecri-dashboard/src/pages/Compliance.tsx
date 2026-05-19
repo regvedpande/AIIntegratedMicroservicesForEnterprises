@@ -128,7 +128,11 @@ export default function Compliance() {
 
   const resolveViolation = useMutation({
     mutationFn: (violationId: string) =>
-      complianceApi.resolveViolation(violationId, { resolution: resolveText, resolvedBy: user!.email }),
+      complianceApi.resolveViolation(violationId, {
+        violationId,
+        resolvedByUserId: user!.userId,
+        resolutionNotes: resolveText,
+      }),
     onSuccess: () => {
       setSnackbar({ open: true, message: 'Violation resolved successfully.', severity: 'success' })
       setResolveDialog({ open: false, violation: null })

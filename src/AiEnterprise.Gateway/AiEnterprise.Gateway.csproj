@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AiEnterprise.Core\AiEnterprise.Core.csproj" />
     <ProjectReference Include="..\AiEnterprise.Shared\AiEnterprise.Shared.csproj" />
+    <ProjectReference Include="..\AiEnterprise.Infrastructure\AiEnterprise.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

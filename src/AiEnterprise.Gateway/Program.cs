@@ -1,4 +1,6 @@
 using AiEnterprise.Gateway.Middleware;
+using AiEnterprise.Infrastructure.Database;
+using AiEnterprise.Infrastructure.Extensions;
 using AiEnterprise.Shared.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -57,7 +59,7 @@ builder.Services.AddSwaggerGen(c =>
 
 // CORS - restrict to known origins in production (configurable per environment)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? ["http://localhost:3000", "http://localhost:5173"];
+    ?? new[] { "http://localhost:3000", "http://localhost:5173" };
 
 builder.Services.AddCors(options =>
 {
@@ -72,8 +74,23 @@ builder.Services.AddCors(options =>
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException(
-        "Jwt:Key is not configured. Use 'dotnet user-secrets set Jwt:Key <value>' or AIEP_JWT_KEY environment variable.");
+    ?? Environment.GetEnvironmentVariable("AIEP_JWT_KEY")
+    ?? Environment.GetEnvironmentVariable("Jwt__Key");
+
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        // Development-only fallback key for demos. DO NOT use in production.
+        jwtKey = "dev_demo_jwt_key_please_change_for_production_32_chars!";
+        Console.WriteLine("WARNING: Using development fallback Jwt:Key. Do NOT use in production.");
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "Jwt:Key is not configured. Use 'dotnet user-secrets set Jwt:Key <value>' or AIEP_JWT_KEY environment variable.");
+    }
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -143,7 +160,17 @@ RegisterServiceClient(builder.Services, "RiskScoring", services["RiskScoringUrl"
 RegisterServiceClient(builder.Services, "AuditService", services["AuditServiceUrl"] ?? "http://localhost:5004");
 RegisterServiceClient(builder.Services, "NotificationHub", services["NotificationHubUrl"] ?? "http://localhost:5005");
 
+// Add infrastructure services for Gateway (database, caching)
+builder.Services.AddInfrastructureServices(builder.Configuration);
+
 var app = builder.Build();
+
+// Initialize database schema on startup
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+    await initializer.InitializeAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -153,6 +180,7 @@ if (app.Environment.IsDevelopment())
 
 // Security middleware pipeline (order matters!)
 app.UseMiddleware<SecurityHeadersMiddleware>();  // Security headers on all responses
+app.UseHttpsRedirection();
 app.UseCors("EnterprisePolicy");
 app.UseRateLimiter();
 app.UseAuthentication();

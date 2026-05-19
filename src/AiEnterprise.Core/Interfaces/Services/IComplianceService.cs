@@ -9,7 +9,7 @@ public interface IComplianceService
     Task<ComplianceCheckResult> RunComplianceCheckAsync(ComplianceCheckRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<ComplianceFrameworkSummary>> GetFrameworkSummariesAsync(Guid enterpriseId, CancellationToken ct = default);
     Task<ComplianceViolation?> GetViolationAsync(Guid violationId, CancellationToken ct = default);
-    Task<PagedResult<ViolationSummaryDto>> GetViolationsAsync(Guid enterpriseId, ViolationStatus? status, int page, int pageSize, CancellationToken ct = default);
+    Task<PagedResult<ViolationSummaryDto>> GetViolationsAsync(Guid enterpriseId, ComplianceFramework? framework, ViolationStatus? status, int page, int pageSize, CancellationToken ct = default);
     Task<ComplianceViolation> CreateViolationAsync(CreateViolationRequest request, CancellationToken ct = default);
     Task<bool> ResolveViolationAsync(ResolveViolationRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<ComplianceRule>> GetActiveRulesAsync(ComplianceFramework framework, CancellationToken ct = default);

@@ -6,27 +6,29 @@ using AiEnterprise.Infrastructure.Configuration;
 using AiEnterprise.Shared.Constants;
 using AiEnterprise.Shared.Utilities;
 using Dapper;
+using DocumentFormat.OpenXml.Packaging;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
+using UglyToad.PdfPig;
 
 namespace AiEnterprise.DocumentIntelligence.Services;
 
 public class DocumentAnalysisService : IDocumentAnalysisService
 {
     private readonly DapperContext _db;
-    private readonly ClaudeDocumentAnalyzer _claudeAnalyzer;
+    private readonly NvidiaDocumentAnalyzer _nvidiaAnalyzer;
     private readonly ICacheService _cache;
     private readonly ILogger<DocumentAnalysisService> _logger;
 
     public DocumentAnalysisService(
         DapperContext db,
-        ClaudeDocumentAnalyzer claudeAnalyzer,
+        NvidiaDocumentAnalyzer nvidiaAnalyzer,
         ICacheService cache,
         ILogger<DocumentAnalysisService> logger)
     {
         _db = db;
-        _claudeAnalyzer = claudeAnalyzer;
+        _nvidiaAnalyzer = nvidiaAnalyzer;
         _cache = cache;
         _logger = logger;
     }
@@ -44,7 +46,7 @@ public class DocumentAnalysisService : IDocumentAnalysisService
         var textContent = ExtractTextContent(contentBytes, request.DocumentType);
 
         // Save document record
-        var document = new Document
+        var document = new AiEnterprise.Core.Models.Document
         {
             EnterpriseId = request.EnterpriseId,
             FileName = sanitizedFileName,
@@ -57,7 +59,8 @@ public class DocumentAnalysisService : IDocumentAnalysisService
 
         await SaveDocumentAsync(document);
 
-        var analysisResult = await _claudeAnalyzer.AnalyzeDocumentAsync(
+        // Run NVIDIA NIM analysis
+        var analysisResult = await _nvidiaAnalyzer.AnalyzeDocumentAsync(
             document.Id, textContent, request.DocumentType, sanitizedFileName, ct);
 
         await SaveAnalysisResultAsync(analysisResult);
@@ -89,7 +92,28 @@ public class DocumentAnalysisService : IDocumentAnalysisService
         const string sql = "SELECT * FROM DocumentAnalysisResults WHERE DocumentId = @DocumentId";
         var row = await connection.QuerySingleOrDefaultAsync(sql, new { DocumentId = documentId });
 
-        if (row is null) return null;
+        if (row is null)
+        {
+            // Document exists but analysis failed or timed out — return a graceful "pending" result
+            const string docSql = "SELECT Id, FileName, UploadedAt FROM Documents WHERE Id = @DocumentId";
+            var docRow = await connection.QuerySingleOrDefaultAsync(docSql, new { DocumentId = documentId });
+            if (docRow is null) return null; // Document itself doesn't exist → true 404
+
+            return new DocumentAnalysisResult
+            {
+                DocumentId = documentId,
+                OverallRiskLevel = RiskLevel.Low,
+                RiskScore = 0,
+                ExecutiveSummary = "Analysis is not yet available for this document. Please re-upload and analyze it.",
+                Findings = [],
+                KeyClauses = [],
+                ComplianceConcerns = [],
+                Recommendations = ["Re-upload this document and click 'Analyze Document' to run AI risk analysis."],
+                ModelUsed = "Pending",
+                TokensUsed = 0,
+                AnalyzedAt = docRow.UploadedAt
+            };
+        }
 
         var result = new DocumentAnalysisResult
         {
@@ -142,7 +166,7 @@ public class DocumentAnalysisService : IDocumentAnalysisService
         return new PagedResult<DocumentAnalysisSummary>(items, total, page, pageSize, (int)Math.Ceiling(total / (double)pageSize));
     }
 
-    private async Task SaveDocumentAsync(Document document)
+    private async Task SaveDocumentAsync(AiEnterprise.Core.Models.Document document)
     {
         using var connection = _db.CreateConnection();
         const string sql = """
@@ -187,10 +211,52 @@ public class DocumentAnalysisService : IDocumentAnalysisService
             new { Id = documentId, AnalyzedAt = DateTime.UtcNow });
     }
 
-    private static string ExtractTextContent(byte[] contentBytes, DocumentType documentType)
+    private static string ExtractTextContent(byte[] contentBytes, AiEnterprise.Core.Enums.DocumentType documentType)
     {
-        // In production, integrate with document parsers (iTextSharp for PDF, DocumentFormat.OpenXml for DOCX)
-        // For now we handle plain text; PDF/DOCX parsing would be added per document type
+        // Detect file type from magic bytes
+        if (contentBytes.Length >= 4 && contentBytes[0] == 0x25 && contentBytes[1] == 0x50 && contentBytes[2] == 0x44 && contentBytes[3] == 0x46)
+            return ExtractFromPdf(contentBytes);
+
+        // DOCX/ZIP signature: PK\x03\x04
+        if (contentBytes.Length >= 4 && contentBytes[0] == 0x50 && contentBytes[1] == 0x4B && contentBytes[2] == 0x03 && contentBytes[3] == 0x04)
+            return ExtractFromDocx(contentBytes);
+
+        // Plain text fallback
         return Encoding.UTF8.GetString(contentBytes);
+    }
+
+    private static string ExtractFromPdf(byte[] contentBytes)
+    {
+        try
+        {
+            using var pdf = PdfDocument.Open(contentBytes);
+            var sb = new StringBuilder();
+            foreach (var page in pdf.GetPages())
+                sb.AppendLine(page.Text);
+            return sb.ToString();
+        }
+        catch
+        {
+            return Encoding.UTF8.GetString(contentBytes);
+        }
+    }
+
+    private static string ExtractFromDocx(byte[] contentBytes)
+    {
+        try
+        {
+            using var ms = new MemoryStream(contentBytes);
+            using var doc = WordprocessingDocument.Open(ms, false);
+            var body = doc.MainDocumentPart?.Document?.Body;
+            if (body is null) return string.Empty;
+            var sb = new StringBuilder();
+            foreach (var para in body.Elements<DocumentFormat.OpenXml.Wordprocessing.Paragraph>())
+                sb.AppendLine(para.InnerText);
+            return sb.ToString();
+        }
+        catch
+        {
+            return Encoding.UTF8.GetString(contentBytes);
+        }
     }
 }

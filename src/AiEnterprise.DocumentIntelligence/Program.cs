@@ -44,10 +44,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+// NVIDIA NIM API can take 60-120 seconds for large documents — set a generous timeout
+builder.Services.AddHttpClient("nvidia", client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Document Intelligence services
-builder.Services.AddSingleton<ClaudeDocumentAnalyzer>();
+builder.Services.AddSingleton<NvidiaDocumentAnalyzer>();
 builder.Services.AddScoped<IDocumentAnalysisService, DocumentAnalysisService>();
 
 var app = builder.Build();

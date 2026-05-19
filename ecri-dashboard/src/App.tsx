@@ -19,7 +19,7 @@ export default function App() {
   const user = useAuthStore((s) => s.user)
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_relativeSplatPath: true }}>
       <Routes>
         <Route
           path="/login"

@@ -130,7 +130,7 @@ export default function Alerts() {
   }, [alerts.error])
 
   const ackMutation = useMutation({
-    mutationFn: (alertId: string) => alertsApi.acknowledge(alertId),
+    mutationFn: (alertId: string) => alertsApi.acknowledge(alertId, user!.userId),
     onMutate: (alertId: string) => setAcknowledging((s) => new Set([...s, alertId])),
     onSettled: (_data: unknown, _err: unknown, alertId: string) => {
       setAcknowledging((s) => { const ns = new Set(s); ns.delete(alertId); return ns })

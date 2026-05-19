@@ -1,4 +1,5 @@
 using AiEnterprise.Core.DTOs;
+using AiEnterprise.Core.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Json;
@@ -36,8 +37,27 @@ public class GatewayController : ControllerBase
 
     /// <summary>Get compliance violations for an enterprise.</summary>
     [HttpGet("compliance/{enterpriseId}/violations")]
-    public Task<ActionResult> GetViolations(Guid enterpriseId, [FromQuery] string? status, CancellationToken ct)
-        => ForwardAsync("ComplianceService", HttpMethod.Get, $"/api/compliance/{enterpriseId}/violations?status={status}", null, ct);
+    public Task<ActionResult> GetViolations(
+        Guid enterpriseId,
+        [FromQuery] ComplianceFramework? framework,
+        [FromQuery] ViolationStatus? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+        => ForwardAsync(
+            "ComplianceService",
+            HttpMethod.Get,
+            BuildPath(
+                $"/api/compliance/{enterpriseId}/violations",
+                new Dictionary<string, object?>
+                {
+                    ["framework"] = framework is null ? null : (int)framework.Value,
+                    ["status"] = status is null ? null : (int)status.Value,
+                    ["page"] = page,
+                    ["pageSize"] = pageSize
+                }),
+            null,
+            ct);
 
     /// <summary>Resolve a compliance violation.</summary>
     [HttpPatch("compliance/violations/{violationId}/resolve")]
@@ -78,6 +98,11 @@ public class GatewayController : ControllerBase
     [HttpPost("risk/behavioral/anomaly")]
     public Task<ActionResult> RecordAnomaly([FromBody] BehavioralAnomalyRequest request, CancellationToken ct)
         => ForwardAsync("RiskScoring", HttpMethod.Post, "/api/risk/behavioral/anomaly", request, ct);
+
+    /// <summary>Get recent behavioral anomalies for an enterprise.</summary>
+    [HttpGet("risk/{enterpriseId}/behavioral/recent")]
+    public Task<ActionResult> GetRecentAnomalies(Guid enterpriseId, [FromQuery] int limit = 50, CancellationToken ct = default)
+        => ForwardAsync("RiskScoring", HttpMethod.Get, BuildPath($"/api/risk/{enterpriseId}/behavioral/recent", new Dictionary<string, object?> { ["limit"] = limit }), null, ct);
 
     // ─── Audit Routes ─────────────────────────────────────────────────────────
 
@@ -220,5 +245,15 @@ public class GatewayController : ControllerBase
             _logger.LogError(ex, "Unexpected error forwarding to {ClientName}", clientName);
             return StatusCode(500, new { error = "An internal error occurred." });
         }
+    }
+
+    private static string BuildPath(string path, IReadOnlyDictionary<string, object?> query)
+    {
+        var parts = query
+            .Where(kvp => kvp.Value is not null)
+            .Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(Convert.ToString(kvp.Value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty)}")
+            .ToArray();
+
+        return parts.Length == 0 ? path : $"{path}?{string.Join("&", parts)}";
     }
 }

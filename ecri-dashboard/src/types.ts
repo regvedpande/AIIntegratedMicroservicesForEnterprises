@@ -81,8 +81,9 @@ export interface ComplianceCheckRequest {
 }
 
 export interface ResolveViolationRequest {
-  resolution: string
-  resolvedBy: string
+  violationId: string
+  resolvedByUserId: string
+  resolutionNotes: string
 }
 
 // ─── Documents ────────────────────────────────────────────────────────────────
@@ -161,7 +162,9 @@ export interface BehavioralAnomalyRequest {
   enterpriseId: string
   entityId: string
   entityType: string
-  eventData: Record<string, unknown>
+  eventType: string
+  description: string
+  metadata: string
 }
 
 // ─── Audit ────────────────────────────────────────────────────────────────────

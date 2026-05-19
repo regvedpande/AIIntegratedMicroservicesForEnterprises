@@ -53,6 +53,7 @@ public class ComplianceController : ControllerBase
     [HttpGet("{enterpriseId}/violations")]
     public async Task<ActionResult<PagedResult<ViolationSummaryDto>>> GetViolations(
         Guid enterpriseId,
+        [FromQuery] ComplianceFramework? framework,
         [FromQuery] ViolationStatus? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -61,7 +62,7 @@ public class ComplianceController : ControllerBase
         if (page < 1 || pageSize < 1 || pageSize > 100)
             return BadRequest(new { error = "Page must be >= 1 and pageSize between 1-100." });
 
-        var result = await _complianceService.GetViolationsAsync(enterpriseId, status, page, pageSize, ct);
+        var result = await _complianceService.GetViolationsAsync(enterpriseId, framework, status, page, pageSize, ct);
         return Ok(result);
     }
 
