@@ -216,9 +216,10 @@ export interface Alert {
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 export interface HealthStatus {
-  status: string
-  timestamp: string
-  services?: Record<string, string>
+  gateway: string
+  overallStatus: string
+  checkedAt: string
+  services: Record<string, string>
 }
 
 // ─── Lookup Maps ─────────────────────────────────────────────────────────────

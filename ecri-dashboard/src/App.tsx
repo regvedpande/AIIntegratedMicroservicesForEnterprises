@@ -8,6 +8,7 @@ import Documents from './pages/Documents'
 import Vendors from './pages/Vendors'
 import AuditLog from './pages/AuditLog'
 import Alerts from './pages/Alerts'
+import SystemHealth from './pages/SystemHealth'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user)
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="compliance" element={<Compliance />} />
           <Route path="documents" element={<Documents />} />
           <Route path="vendors" element={<Vendors />} />
+          <Route path="health" element={<SystemHealth />} />
           <Route path="audit" element={<AuditLog />} />
           <Route path="alerts" element={<Alerts />} />
         </Route>

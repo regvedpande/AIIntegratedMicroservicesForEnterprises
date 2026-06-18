@@ -142,6 +142,7 @@ public class DocumentAnalysisService : IDocumentAnalysisService
         const string countSql = "SELECT COUNT(*) FROM Documents WHERE EnterpriseId = @EnterpriseId";
         const string dataSql = """
             SELECT d.Id, d.FileName, d.Type, d.UploadedAt, dar.OverallRiskLevel, dar.RiskScore, dar.ExecutiveSummary, dar.AnalyzedAt,
+                   dar.Findings, dar.ComplianceConcerns,
                    (SELECT COUNT(*) FROM DocumentAnalysisResults WHERE DocumentId = d.Id) as HasAnalysis
             FROM Documents d
             LEFT JOIN DocumentAnalysisResults dar ON dar.DocumentId = d.Id
@@ -159,7 +160,8 @@ public class DocumentAnalysisService : IDocumentAnalysisService
             r.OverallRiskLevel != null ? (RiskLevel)r.OverallRiskLevel : RiskLevel.Low,
             r.RiskScore ?? 0.0,
             r.ExecutiveSummary ?? "Not yet analyzed",
-            0, 0,
+            CountJsonArrayItems(r.Findings),
+            CountJsonArrayItems(r.ComplianceConcerns),
             r.AnalyzedAt ?? r.UploadedAt
         )).ToList();
 
@@ -209,6 +211,24 @@ public class DocumentAnalysisService : IDocumentAnalysisService
         await connection.ExecuteAsync(
             "UPDATE Documents SET IsAnalyzed = 1, AnalyzedAt = @AnalyzedAt WHERE Id = @Id",
             new { Id = documentId, AnalyzedAt = DateTime.UtcNow });
+    }
+
+    private static int CountJsonArrayItems(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return 0;
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.ValueKind == JsonValueKind.Array
+                ? document.RootElement.GetArrayLength()
+                : 0;
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
     private static string ExtractTextContent(byte[] contentBytes, AiEnterprise.Core.Enums.DocumentType documentType)

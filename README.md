@@ -11,7 +11,7 @@
 | Enterprise Pain Point | Industry Impact | What ECRI Does |
 |---|---|---|
 | Manual compliance monitoring | 73 % of enterprises fail audits | Continuous rule evaluation — GDPR, SOX, HIPAA, PCI-DSS |
-| Contract review takes 3–4 weeks | Hidden risks cost millions | Claude AI analysis in seconds |
+| Contract review takes 3–4 weeks | Hidden risks cost millions | NVIDIA NIM analysis in seconds |
 | Vendor risk assessed once per year | 60 % of breaches are third-party | Continuous 7-dimension vendor risk scoring |
 | Audit logs are tampered with | Regulatory penalties, no evidence | SHA-256 cryptographic integrity per entry |
 | Thousands of noisy alerts | 70 % of alerts go unread | Intelligent deduplication and priority routing |
@@ -91,7 +91,7 @@ A per-framework compliance score (0–100 %) is calculated from the ratio of pas
 
 ### 3 — Document Intelligence `localhost:5002`
 
-AI-powered document risk analysis using **Claude claude-sonnet-4-6** (Anthropic).
+AI-powered document risk analysis using **NVIDIA NIM**.
 
 **Supported document types:** Contracts · Data Processing Agreements · NDAs · Policies · SLAs · Invoices
 
@@ -152,7 +152,7 @@ Intelligent alert routing that fights alert fatigue.
 | Layer | Technology | Version |
 |---|---|---|
 | Runtime | .NET / ASP.NET Core | 8.0 |
-| AI Model | Claude (Anthropic SDK) | claude-sonnet-4-6 |
+| AI Model | NVIDIA NIM | Configurable hosted model |
 | ORM | Dapper | 2.1 |
 | Database | SQL Server | 2022 |
 | Cache | Redis | 7 |
@@ -170,7 +170,7 @@ Intelligent alert routing that fights alert fatigue.
 
 - [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
-- [Anthropic API Key](https://console.anthropic.com) — needed by the Document Intelligence service
+- [NVIDIA API Key](https://build.nvidia.com/) — needed by the Document Intelligence service
 
 ### Quick Start with Docker (recommended)
 
@@ -216,7 +216,7 @@ dotnet user-secrets set "Gateway:ApiKey" "your-dev-api-key"
 # ── Document Intelligence ─────────────────────────────────────
 cd ../AiEnterprise.DocumentIntelligence
 dotnet user-secrets set "Jwt:Key" "your-dev-secret-key-at-least-32-characters"
-dotnet user-secrets set "Anthropic:ApiKey" "sk-ant-..."
+dotnet user-secrets set "Nvidia:ApiKey" "nvapi-..."
 
 # Run individual services
 dotnet run --project src/AiEnterprise.Gateway
@@ -244,7 +244,7 @@ All configuration is environment-variable driven.
 |---|---|---|---|
 | `Jwt__Key` | All | Yes | JWT signing key — minimum 32 characters |
 | `Gateway__ApiKey` | Gateway | Yes | Value expected in `X-Api-Key` header |
-| `Anthropic__ApiKey` | DocumentIntelligence | Yes | Anthropic API key (`sk-ant-...`) |
+| `Nvidia__ApiKey` | DocumentIntelligence | Yes | NVIDIA API key (`nvapi-...`) |
 | `ConnectionStrings__DefaultConnection` | All | Yes | SQL Server connection string |
 | `ConnectionStrings__Redis` | All | Yes | Redis connection string |
 | `Notifications__WebhookUrl` | NotificationHub | No | Slack / Teams incoming webhook URL |
@@ -299,7 +299,7 @@ Response:
 }
 ```
 
-### Analyse a Document with Claude AI
+### Analyse a Document with NVIDIA NIM
 
 ```http
 POST /api/gateway/documents/analyze
@@ -424,7 +424,7 @@ src/
 │   └── Controllers/ComplianceController.cs
 │
 ├── AiEnterprise.DocumentIntelligence/    # :5002 — AI document analysis
-│   ├── Services/ClaudeDocumentAnalyzer.cs  # Anthropic Claude API integration
+│   ├── Services/NvidiaDocumentAnalyzer.cs  # NVIDIA NIM API integration
 │   └── Services/DocumentAnalysisService.cs
 │
 ├── AiEnterprise.RiskScoring/             # :5003 — Vendor & behavioural risk
@@ -468,4 +468,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-*Document Intelligence powered by [Claude claude-sonnet-4-6](https://www.anthropic.com) (Anthropic).*
+*Document Intelligence powered by NVIDIA NIM.*

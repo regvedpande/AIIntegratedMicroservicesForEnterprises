@@ -28,6 +28,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Logout as LogoutIcon,
   Security as SecurityIcon,
+  MonitorHeart as HealthIcon,
 } from '@mui/icons-material'
 import { alpha } from '@mui/material/styles'
 import { useQuery } from '@tanstack/react-query'
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { label: 'Compliance', path: '/compliance', icon: ShieldIcon },
   { label: 'Documents', path: '/documents', icon: DocumentIcon },
   { label: 'Vendors', path: '/vendors', icon: BusinessIcon },
+  { label: 'System Health', path: '/health', icon: HealthIcon },
   { label: 'Audit Log', path: '/audit', icon: HistoryIcon },
   { label: 'Alerts', path: '/alerts', icon: NotificationsIcon, badge: true },
 ]

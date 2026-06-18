@@ -21,7 +21,7 @@ public class DocumentController : ControllerBase
     }
 
     /// <summary>
-    /// Upload and analyze a document using Claude AI.
+    /// Upload and analyze a document using NVIDIA NIM.
     /// Supports contracts, DPAs, policies, invoices, NDAs.
     /// Returns risk analysis with compliance concerns and recommendations.
     /// </summary>

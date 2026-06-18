@@ -17,7 +17,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Document Intelligence API",
         Version = "v1",
-        Description = "AI-powered document risk analysis using Claude. Analyzes contracts, DPAs, policies for compliance risks."
+        Description = "AI-powered document risk analysis using NVIDIA NIM. Analyzes contracts, DPAs, and policies for compliance risks."
     });
 });
 
