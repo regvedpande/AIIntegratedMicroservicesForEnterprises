@@ -2,6 +2,8 @@ using AiEnterprise.Core.DTOs;
 using AiEnterprise.Core.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Concurrent;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -151,7 +153,7 @@ public class GatewayController : ControllerBase
             ("NotificationHub", "/api/notifications/health"),
         };
 
-        var statuses = new Dictionary<string, string>();
+        var statuses = new ConcurrentDictionary<string, string>();
         await Parallel.ForEachAsync(serviceChecks, ct, async (check, token) =>
         {
             try
@@ -189,24 +191,27 @@ public class GatewayController : ControllerBase
         try
         {
             var client = _httpClientFactory.CreateClient(clientName);
+            using var request = new HttpRequestMessage(method, path);
 
-            // Forward the Authorization header to downstream services
+            // Headers belong to this request. Never mutate pooled HttpClient defaults
+            // with user-specific values because they can leak into later requests.
             var authHeader = Request.Headers["Authorization"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(authHeader))
-                client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", authHeader);
+            if (AuthenticationHeaderValue.TryParse(authHeader, out var authentication))
+                request.Headers.Authorization = authentication;
 
-            HttpResponseMessage response;
+            var correlationId = Request.Headers["X-Correlation-ID"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(correlationId))
+                correlationId = HttpContext.TraceIdentifier;
+            request.Headers.TryAddWithoutValidation("X-Correlation-ID", correlationId);
+            Response.Headers["X-Correlation-ID"] = correlationId;
+
             if (body is not null)
-            {
-                using var content = JsonContent.Create(body, options: JsonOptions);
-                response = method == HttpMethod.Patch
-                    ? await client.PatchAsync(path, content, ct)
-                    : await client.PostAsync(path, content, ct);
-            }
-            else
-            {
-                response = await client.GetAsync(path, ct);
-            }
+                request.Content = JsonContent.Create(body, options: JsonOptions);
+
+            using var response = await client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                ct);
 
             var responseBody = await response.Content.ReadAsStringAsync(ct);
 
